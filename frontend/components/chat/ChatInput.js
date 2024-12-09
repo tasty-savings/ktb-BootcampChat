@@ -43,6 +43,18 @@ const ChatInput = forwardRef(({
   const [uploadError, setUploadError] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
 
+  const [isComposing, setIsComposing] = useState(false);
+
+  const handleCompositionStart = useCallback(() => {
+    setIsComposing(true);
+  }, []);
+
+  const handleCompositionEnd = useCallback((e) => {
+    setIsComposing(false);
+    // 조합이 끝난 후 message 상태에 최종 값을 반영하는 경우 여기에 추가할 수 있음
+  }, []);
+
+
   const handleFileValidationAndPreview = useCallback(async (file) => {
     if (!file) return;
 
@@ -95,6 +107,7 @@ const ChatInput = forwardRef(({
 
   const handleSubmit = useCallback(async (e) => {
     e?.preventDefault();
+    if (isComposing) return;
 
     if (files.length > 0) {
       try {
@@ -123,7 +136,7 @@ const ChatInput = forwardRef(({
       });
       setMessage('');
     }
-  }, [files, message, onSubmit, setMessage]);
+  }, [files, message, onSubmit, setMessage, isComposing]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -437,6 +450,8 @@ const ChatInput = forwardRef(({
             value={message}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
+            onCompositionStart={handleCompositionStart}
+            onCompositionEnd={handleCompositionEnd}
             placeholder={isDragging ? "파일을 여기에 놓아주세요." : "메시지를 입력하세요... (@를 입력하여 멘션, Shift + Enter로 줄바꿈)"}
             disabled={isDisabled}
             className={`${isDragging ? 'dragging' : ''} chat-input-textarea`}
