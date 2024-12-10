@@ -1,0 +1,62 @@
+version: "3.9"
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: ./backend/Dockerfile
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./backend/.env
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: "0.4"  # 약 40%의 CPU 사용 제한 (t3.small의 베이스라인)
+    #       memory: "2G"
+    #     reservations:
+    #       cpus: "0.2"  # 최소 20% CPU 보장
+    #       memory: "1G"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: ./frontend/Dockerfile
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./frontend/.env.local
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: "0.4"  # 약 40%의 CPU 사용 제한 (t3.small의 베이스라인)
+    #       memory: "2G"
+    #     reservations:
+    #       cpus: "0.2"  # 최소 20% CPU 보장
+    #       memory: "1G"
+
+
+  mongodb:
+    image: mongo
+    ports:
+      - "27017:27017"
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: "0.4"  # 약 40%의 CPU 사용 제한 (t3.small의 베이스라인)
+    #       memory: "2G"
+    #     reservations:
+    #       cpus: "0.2"  # 최소 20% CPU 보장
+    #       memory: "1G"
+
+  redis:
+    image: redis
+    ports:
+      - "6379:6379"
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: "0.4"  # 약 40%의 CPU 사용 제한 (t3.small의 베이스라인)
+    #       memory: "2G"
+    #     reservations:
+    #       cpus: "0.2"  # 최소 20% CPU 보장
+    #       memory: "1G"
