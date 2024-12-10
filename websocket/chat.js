@@ -8,8 +8,8 @@ const redisClient = require('./utils/redisClient');
 const SessionService = require('./services/sessionService');
 const aiService = require('./services/aiService');
 const Redis = require('redis');
-const publisher = Redis.createClient();
-const subscriber = Redis.createClient();
+
+
 
 module.exports = function(io) {
   const connectedUsers = new Map();
@@ -352,12 +352,12 @@ module.exports = function(io) {
           throw new Error('Unauthorized');
         }
 
-        // todo redis pub/sub 구조
-        subscriber.subscribe(`chat:${roomId}`);
-        subscriber.on('message', (channel, message) => {
-          const data = JSON.parse(message);
-          io.to(roomId).emit('message', data);
-        });
+        //
+        // // 이제부터 채팅 메시지 수신 on
+        // subscriber.on('message', (channel, message) => {
+        //   const data = JSON.parse(message);
+        //   io.to(roomId).emit('message', data);
+        // });
 
         // 이미 해당 방에 참여 중인지 확인
         const currentRoom = userRooms.get(socket.user.id);
@@ -409,7 +409,7 @@ module.exports = function(io) {
           type: 'system',
           timestamp: new Date()
         });
-        
+
         await joinMessage.save();
 
         // 초기 메시지 로드
@@ -617,8 +617,10 @@ module.exports = function(io) {
 
         socket.leave(roomId);
         userRooms.delete(socket.user.id);
+
+
         // todo 퇴장 시 redis 구독 해재
-        subscriber.unsubscribe(`chat:${roomId}`);
+        // subscriber.unsubscribe(`chat:${roomId}`);
 
         // 퇴장 메시지 생성 및 저장
         const leaveMessage = await Message.create({

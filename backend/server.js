@@ -120,6 +120,7 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const path = require('path');
 const routes = require('./routes');
+const { connectRedis } = require('./utils/redisPubSub'); // 경로 조정 필요
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -197,19 +198,43 @@ app.use((err, req, res, next) => {
   });
 });
 
-// MongoDB 연결 후 서버 시작
-mongoose.connect(process.env.MONGO_URI)
-    .then(() => {
-      console.log('MongoDB Connected');
-      app.listen(PORT, '0.0.0.0', () => {
-        console.log(`API Server running on port ${PORT}`);
-        console.log('Environment:', process.env.NODE_ENV);
-        console.log('API Base URL:', `http://0.0.0.0:${PORT}/api`);
-      });
-    })
-    .catch(err => {
-      console.error('Server startup error:', err);
-      process.exit(1);
+// 서버 및 데이터베이스 초기화 함수
+async function startServer() {
+  try {
+    await connectRedis(); // Redis 연결
+    console.log('Redis Connected');
+
+    await mongoose.connect(process.env.MONGO_URI); // MongoDB 연결
+    console.log('MongoDB Connected');
+
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`API Server running on port ${PORT}`);
+      console.log('Environment:', process.env.NODE_ENV);
+      console.log('API Base URL:', `http://0.0.0.0:${PORT}/api`);
     });
+  } catch (err) {
+    console.error('Server startup error:', err);
+    process.exit(1);
+  }
+}
+
+// 서버 시작
+startServer();
+//
+// // MongoDB 연결 후 서버 시작
+// mongoose.connect(process.env.MONGO_URI)
+//     .then(() => {
+//       console.log('MongoDB Connected');
+//       app.listen(PORT, '0.0.0.0', () => {
+//         console.log(`API Server running on port ${PORT}`);
+//         console.log('Environment:', process.env.NODE_ENV);
+//         console.log('API Base URL:', `http://0.0.0.0:${PORT}/api`);
+//       });
+//     })
+//     .catch(err => {
+//       console.error('Server startup error:', err);
+//       process.exit(1);
+//     });
+// await connectRedis();
 
 module.exports = { app };
