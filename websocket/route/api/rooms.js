@@ -2,16 +2,10 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../../middleware/auth');
 const Room = require('../../models/Room');
-const User = require('../../models/User');
+// const User = require('../../models/User');
 const { rateLimit } = require('express-rate-limit');
 let io;
 
-
-/*
-* 채팅방 목록 나오는 로직
-* http 방식이 아니라 소켓방식임?
-*
-* */
 
 // 속도 제한 설정
 const limiter = rateLimit({
@@ -300,14 +294,6 @@ router.post('/:roomId/join', auth, async (req, res) => {
     const populatedRoom = await room.populate('participants', 'name email');
 
     // Socket.IO를 통해 참여자 업데이트 알림
-    // todo 소켓 분리!!!!!!
-    // 이벤트 에미터를 사용 (Redis pub/sub)
-    /*
-    * pubsub.emit('room:join', {
-              roomId: roomId,
-              user: userData
-    });
-    * */
     if (io) {
       io.to(req.params.roomId).emit('roomUpdate', {
         ...populatedRoom.toObject(),
