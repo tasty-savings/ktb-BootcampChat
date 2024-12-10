@@ -34,7 +34,6 @@ services:
     #       cpus: "0.2"  # 최소 20% CPU 보장
     #       memory: "1G"
 
-
   mongodb:
     image: mongo
     ports:

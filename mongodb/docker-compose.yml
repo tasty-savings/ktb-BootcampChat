@@ -1,0 +1,53 @@
+version: "3.9"
+services:
+  mongo1:
+    image: mongo:latest
+    container_name: mongo1
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./mongod.conf:/etc/mongod.conf:ro
+      - ./mongo-keyfile:/etc/mongo-keyfile:ro
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: testUser
+      MONGO_INITDB_ROOT_PASSWORD: testPassword
+    command: ["mongod", "--config", "/etc/mongod.conf"]
+    restart: always
+    networks:
+      - mongo-network
+
+  mongo2:
+    image: mongo:latest
+    container_name: mongo2
+    ports:
+      - "27018:27017"
+    volumes:
+      - ./mongod.conf:/etc/mongod.conf:ro
+      - ./mongo-keyfile:/etc/mongo-keyfile:ro
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: testUser
+      MONGO_INITDB_ROOT_PASSWORD: testPassword
+    command: ["mongod", "--config", "/etc/mongod.conf"]
+    restart: always
+    networks:
+      - mongo-network
+
+  mongo3:
+    image: mongo:latest
+    container_name: mongo3
+    ports:
+      - "27019:27017"
+    volumes:
+      - ./mongod.conf:/etc/mongod.conf:ro
+      - ./mongo-keyfile:/etc/mongo-keyfile:ro
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: testUser
+      MONGO_INITDB_ROOT_PASSWORD: testPassword
+    command: ["mongod", "--config", "/etc/mongod.conf"]
+    restart: always
+    networks:
+      - mongo-network
+
+networks:
+  mongo-network:
+    driver: bridge
