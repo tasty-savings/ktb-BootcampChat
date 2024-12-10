@@ -1,12 +1,15 @@
-const Message = require('../models/Message');
-const Room = require('../models/Room');
-const User = require('../models/User');
-const File = require('../models/File');
+const Message = require('./models/Message');
+const Room = require('./models/Room');
+const User = require('./models/User');
+const File = require('./models/File');
 const jwt = require('jsonwebtoken');
-const { jwtSecret } = require('../config/keys');
-const redisClient = require('../utils/redisClient');
-const SessionService = require('../services/sessionService');
-const aiService = require('../services/aiService');
+const { jwtSecret } = require('./config/keys');
+const redisClient = require('./utils/redisClient');
+const SessionService = require('./services/sessionService');
+const aiService = require('./services/aiService');
+const Redis = require('redis');
+
+
 
 module.exports = function(io) {
   const connectedUsers = new Map();
@@ -188,14 +191,20 @@ module.exports = function(io) {
       const token = socket.handshake.auth.token;
       const sessionId = socket.handshake.auth.sessionId;
 
+      // log
+      console.log(token)
+      console.log(sessionId)
+
       if (!token || !sessionId) {
         return next(new Error('Authentication error'));
       }
 
       const decoded = jwt.verify(token, jwtSecret);
+      console.log(decoded)
       if (!decoded?.user?.id) {
         return next(new Error('Invalid token'));
       }
+
 
       // 이미 연결된 사용자인지 확인
       const existingSocketId = connectedUsers.get(decoded.user.id);
@@ -213,6 +222,8 @@ module.exports = function(io) {
         return next(new Error(validationResult.message || 'Invalid session'));
       }
 
+      // 몽고에서 찾는 로직
+      console.log("몽고에서 찾는중!")
       const user = await User.findById(decoded.user.id);
       if (!user) {
         return next(new Error('User not found'));
@@ -341,6 +352,13 @@ module.exports = function(io) {
           throw new Error('Unauthorized');
         }
 
+        //
+        // // 이제부터 채팅 메시지 수신 on
+        // subscriber.on('message', (channel, message) => {
+        //   const data = JSON.parse(message);
+        //   io.to(roomId).emit('message', data);
+        // });
+
         // 이미 해당 방에 참여 중인지 확인
         const currentRoom = userRooms.get(socket.user.id);
         if (currentRoom === roomId) {
@@ -391,7 +409,7 @@ module.exports = function(io) {
           type: 'system',
           timestamp: new Date()
         });
-        
+
         await joinMessage.save();
 
         // 초기 메시지 로드
@@ -599,6 +617,10 @@ module.exports = function(io) {
 
         socket.leave(roomId);
         userRooms.delete(socket.user.id);
+
+
+        // todo 퇴장 시 redis 구독 해재
+        // subscriber.unsubscribe(`chat:${roomId}`);
 
         // 퇴장 메시지 생성 및 저장
         const leaveMessage = await Message.create({
@@ -954,7 +976,7 @@ module.exports = function(io) {
       });
     } catch (error) {
       streamingSessions.delete(messageId);
-      console.error('AI service error:', error);
+      console.error('AI services error:', error);
       
       io.to(room).emit('aiMessageError', {
         messageId,
@@ -962,7 +984,7 @@ module.exports = function(io) {
         aiType: aiName
       });
 
-      logDebug('AI service error', {
+      logDebug('AI services error', {
         messageId,
         aiType: aiName,
         error: error.message
