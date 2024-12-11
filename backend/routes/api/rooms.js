@@ -229,7 +229,7 @@ router.post('/', auth, async (req, res) => {
 // 특정 채팅방 조회
 router.get('/:roomId', auth, async (req, res) => {
     try {
-        const room = await Room.findById(req.params.roomId)
+        let room = await Room.findById(req.params.roomId)
             .populate('creator', 'name email')
             .populate('participants', 'name email');
 
@@ -238,6 +238,18 @@ router.get('/:roomId', auth, async (req, res) => {
                 success: false,
                 message: '채팅방을 찾을 수 없습니다.'
             });
+        }
+
+        // 현재 사용자가 참여자 목록에 없으면 자동으로 추가
+        const isParticipant = room.participants.some(p => p.id.toString() === req.user.id);
+        if (!isParticipant) {
+            room.participants.push(req.user.id);
+            await room.save();
+
+            // 참여자 정보를 포함하여 다시 조회
+            room = await Room.findById(req.params.roomId)
+                .populate('creator', 'name email')
+                .populate('participants', 'name email');
         }
 
         res.json({
@@ -273,9 +285,10 @@ router.post('/:roomId/join', auth, async (req, res) => {
         if (room.hasPassword) {
             const isPasswordValid = await room.checkPassword(password);
             if (!isPasswordValid) {
-                return res.status(401).json({
+                return res.status(403).json({
                     success: false,
-                    message: '비밀번호가 일치하지 않습니다.'
+                    message: '비밀번호가 일치하지 않습니다.',
+                    code: 'INVALID_ROOM_PASSWORD'
                 });
             }
         }
