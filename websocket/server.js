@@ -53,17 +53,12 @@ const express = require('express');
 const socketIO = require('socket.io');
 const mongoose = require('mongoose');
 const { connectRedis, setIO } = require('./utils/redisPubSub');
-// const { initializeSocket } = require('./route/api/rooms');
 const chatHandler = require('./chat');
 
 const app = express();
 
-// Express 미들웨어 및 라우터 설정
-// app.use(express.json());
-// app.use('/api/rooms', require('./route/api/rooms').router); // API 라우터 설정
 
 const SOCKET_PORT = process.env.SOCKET_PORT || 3001;
-const PORT = process.env.PORT || 3000;
 
 const server = http.createServer(app);
 const io = socketIO(server, {
@@ -105,12 +100,7 @@ setIO(io);
             console.log(`Socket Server running on port ${SOCKET_PORT}`);
         });
 
-        // API 서버 시작
-        // app.listen(PORT, '0.0.0.0', () => {
-        //     console.log(`API Server running on port ${PORT}`);
-        //     console.log('Environment:', process.env.NODE_ENV);
-        //     console.log('API Base URL:', `http://0.0.0.0:${PORT}/api`);
-        // });
+
     } catch (err) {
         console.error('Server startup error:', err);
         process.exit(1);
