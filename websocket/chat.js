@@ -1,3 +1,4 @@
+// chat.js
 const Message = require('./models/Message');
 const Room = require('./models/Room');
 const User = require('./models/User');
@@ -7,16 +8,14 @@ const { jwtSecret } = require('./config/keys');
 const redisClient = require('./utils/redisClient');
 const SessionService = require('./services/sessionService');
 const aiService = require('./services/aiService');
-const Redis = require('redis');
-
-
 
 module.exports = function(io) {
-  const connectedUsers = new Map();
-  const streamingSessions = new Map();
-  const userRooms = new Map();
-  const messageQueues = new Map();
-  const messageLoadRetries = new Map();
+  const connectedUsers = new Map();                       // 사용자 ID를 소켓 ID로 매핑
+  const streamingSessions = new Map();                    // 활성 스트리밍 세션 관리
+  const userRooms = new Map();                            // 사용자 ID를 방 ID로 매핑
+  const messageQueues = new Map();                        // 메시지 로드 큐 관리
+  const messageLoadRetries = new Map();                   // 메시지 로드 재시도 횟수 관리
+
   const BATCH_SIZE = 30;  // 한 번에 로드할 메시지 수
   const LOAD_DELAY = 300; // 메시지 로드 딜레이 (ms)
   const MAX_RETRIES = 3;  // 최대 재시도 횟수
@@ -50,40 +49,40 @@ module.exports = function(io) {
       // 메시지 로드 with profileImage
       const messages = await Promise.race([
         Message.find(query)
-          .populate('sender', 'name email profileImage')
-          .populate({
-            path: 'file',
-            select: 'filename originalname mimetype size'
-          })
-          .sort({ timestamp: -1 })
-          .limit(limit + 1)
-          .lean(),
+            .populate('sender', 'name email profileImage')
+            .populate({
+              path: 'file',
+              select: 'filename originalname mimetype size'
+            })
+            .sort({ timestamp: -1 })
+            .limit(limit + 1)
+            .lean(),
         timeoutPromise
       ]);
 
       // 결과 처리
       const hasMore = messages.length > limit;
       const resultMessages = messages.slice(0, limit);
-      const sortedMessages = resultMessages.sort((a, b) => 
-        new Date(a.timestamp) - new Date(b.timestamp)
+      const sortedMessages = resultMessages.sort((a, b) =>
+          new Date(a.timestamp) - new Date(b.timestamp)
       );
 
       // 읽음 상태 비동기 업데이트
       if (sortedMessages.length > 0 && socket.user) {
         const messageIds = sortedMessages.map(msg => msg._id);
         Message.updateMany(
-          {
-            _id: { $in: messageIds },
-            'readers.userId': { $ne: socket.user.id }
-          },
-          {
-            $push: {
-              readers: {
-                userId: socket.user.id,
-                readAt: new Date()
+            {
+              _id: { $in: messageIds },
+              'readers.userId': { $ne: socket.user.id }
+            },
+            {
+              $push: {
+                readers: {
+                  userId: socket.user.id,
+                  readAt: new Date()
+                }
               }
             }
-          }
         ).exec().catch(error => {
           console.error('Read status update error:', error);
         });
@@ -117,7 +116,7 @@ module.exports = function(io) {
   // 재시도 로직을 포함한 메시지 로드 함수
   const loadMessagesWithRetry = async (socket, roomId, before, retryCount = 0) => {
     const retryKey = `${roomId}:${socket.user.id}`;
-    
+
     try {
       if (messageLoadRetries.get(retryKey) >= MAX_RETRIES) {
         throw new Error('최대 재시도 횟수를 초과했습니다.');
@@ -129,11 +128,11 @@ module.exports = function(io) {
 
     } catch (error) {
       const currentRetries = messageLoadRetries.get(retryKey) || 0;
-      
+
       if (currentRetries < MAX_RETRIES) {
         messageLoadRetries.set(retryKey, currentRetries + 1);
         const delay = Math.min(RETRY_DELAY * Math.pow(2, currentRetries), 10000);
-        
+
         logDebug('retrying message load', {
           roomId,
           retryCount: currentRetries + 1,
@@ -191,20 +190,18 @@ module.exports = function(io) {
       const token = socket.handshake.auth.token;
       const sessionId = socket.handshake.auth.sessionId;
 
-      // log
-      console.log(token)
-      console.log(sessionId)
+      // 로그
+      console.log(token);
+      console.log(sessionId);
 
       if (!token || !sessionId) {
         return next(new Error('Authentication error'));
       }
 
       const decoded = jwt.verify(token, jwtSecret);
-      console.log(decoded)
       if (!decoded?.user?.id) {
         return next(new Error('Invalid token'));
       }
-
 
       // 이미 연결된 사용자인지 확인
       const existingSocketId = connectedUsers.get(decoded.user.id);
@@ -222,8 +219,6 @@ module.exports = function(io) {
         return next(new Error(validationResult.message || 'Invalid session'));
       }
 
-      // 몽고에서 찾는 로직
-      console.log("몽고에서 찾는중!")
       const user = await User.findById(decoded.user.id);
       if (!user) {
         return next(new Error('User not found'));
@@ -242,19 +237,19 @@ module.exports = function(io) {
 
     } catch (error) {
       console.error('Socket authentication error:', error);
-      
+
       if (error.name === 'TokenExpiredError') {
         return next(new Error('Token expired'));
       }
-      
+
       if (error.name === 'JsonWebTokenError') {
         return next(new Error('Invalid token'));
       }
-      
+
       next(new Error('Authentication failed'));
     }
   });
-  
+
   io.on('connection', (socket) => {
     logDebug('socket connected', {
       socketId: socket.id,
@@ -286,7 +281,7 @@ module.exports = function(io) {
           }, DUPLICATE_LOGIN_TIMEOUT);
         }
       }
-      
+
       // 새로운 연결 정보 저장
       connectedUsers.set(socket.user.id, socket.id);
     }
@@ -322,7 +317,7 @@ module.exports = function(io) {
         socket.emit('messageLoadStart');
 
         const result = await loadMessagesWithRetry(socket, roomId, before);
-        
+
         logDebug('previous messages loaded', {
           roomId,
           messageCount: result.messages.length,
@@ -344,20 +339,13 @@ module.exports = function(io) {
         }, LOAD_DELAY);
       }
     });
-    
+
     // 채팅방 입장 처리 개선
     socket.on('joinRoom', async (roomId) => {
       try {
         if (!socket.user) {
           throw new Error('Unauthorized');
         }
-
-        //
-        // // 이제부터 채팅 메시지 수신 on
-        // subscriber.on('message', (channel, message) => {
-        //   const data = JSON.parse(message);
-        //   io.to(roomId).emit('message', data);
-        // });
 
         // 이미 해당 방에 참여 중인지 확인
         const currentRoom = userRooms.get(socket.user.id);
@@ -372,13 +360,13 @@ module.exports = function(io) {
 
         // 기존 방에서 나가기
         if (currentRoom) {
-          logDebug('leaving current room', { 
-            userId: socket.user.id, 
-            roomId: currentRoom 
+          logDebug('leaving current room', {
+            userId: socket.user.id,
+            roomId: currentRoom
           });
           socket.leave(currentRoom);
           userRooms.delete(socket.user.id);
-          
+
           socket.to(currentRoom).emit('userLeft', {
             userId: socket.user.id,
             name: socket.user.name
@@ -387,12 +375,12 @@ module.exports = function(io) {
 
         // 채팅방 참가 with profileImage
         const room = await Room.findByIdAndUpdate(
-          roomId,
-          { $addToSet: { participants: socket.user.id } },
-          { 
-            new: true,
-            runValidators: true 
-          }
+            roomId,
+            { $addToSet: { participants: socket.user.id } },
+            {
+              new: true,
+              runValidators: true
+            }
         ).populate('participants', 'name email profileImage');
 
         if (!room) {
@@ -418,15 +406,15 @@ module.exports = function(io) {
 
         // 활성 스트리밍 메시지 조회
         const activeStreams = Array.from(streamingSessions.values())
-          .filter(session => session.room === roomId)
-          .map(session => ({
-            _id: session.messageId,
-            type: 'ai',
-            aiType: session.aiType,
-            content: session.content,
-            timestamp: session.timestamp,
-            isStreaming: true
-          }));
+            .filter(session => session.room === roomId)
+            .map(session => ({
+              _id: session.messageId,
+              type: 'ai',
+              aiType: session.aiType,
+              content: session.content,
+              timestamp: session.timestamp,
+              isStreaming: true
+            }));
 
         // 이벤트 발송
         socket.emit('joinRoomSuccess', {
@@ -455,7 +443,7 @@ module.exports = function(io) {
         });
       }
     });
-    
+
     // 메시지 전송 처리
     socket.on('chatMessage', async (messageData) => {
       try {
@@ -485,10 +473,10 @@ module.exports = function(io) {
 
         // 세션 유효성 재확인
         const sessionValidation = await SessionService.validateSession(
-          socket.user.id, 
-          socket.user.sessionId
+            socket.user.id,
+            socket.user.sessionId
         );
-        
+
         if (!sessionValidation.isValid) {
           throw new Error('세션이 만료되었습니다. 다시 로그인해주세요.');
         }
@@ -619,9 +607,6 @@ module.exports = function(io) {
         userRooms.delete(socket.user.id);
 
 
-        // todo 퇴장 시 redis 구독 해재
-        // subscriber.unsubscribe(`chat:${roomId}`);
-
         // 퇴장 메시지 생성 및 저장
         const leaveMessage = await Message.create({
           room: roomId,
@@ -632,12 +617,12 @@ module.exports = function(io) {
 
         // 참가자 목록 업데이트 - profileImage 포함
         const updatedRoom = await Room.findByIdAndUpdate(
-          roomId,
-          { $pull: { participants: socket.user.id } },
-          { 
-            new: true,
-            runValidators: true
-          }
+            roomId,
+            { $pull: { participants: socket.user.id } },
+            {
+              new: true,
+              runValidators: true
+            }
         ).populate('participants', 'name email profileImage');
 
         if (!updatedRoom) {
@@ -670,7 +655,7 @@ module.exports = function(io) {
         });
       }
     });
-    
+
     // 연결 해제 처리
     socket.on('disconnect', async (reason) => {
       if (!socket.user) return;
@@ -686,12 +671,12 @@ module.exports = function(io) {
 
         // 메시지 큐 정리
         const userQueues = Array.from(messageQueues.keys())
-          .filter(key => key.endsWith(`:${socket.user.id}`));
+            .filter(key => key.endsWith(`:${socket.user.id}`));
         userQueues.forEach(key => {
           messageQueues.delete(key);
           messageLoadRetries.delete(key);
         });
-        
+
         // 스트리밍 세션 정리
         for (const [messageId, session] of streamingSessions.entries()) {
           if (session.userId === socket.user.id) {
@@ -711,12 +696,12 @@ module.exports = function(io) {
             });
 
             const updatedRoom = await Room.findByIdAndUpdate(
-              roomId,
-              { $pull: { participants: socket.user.id } },
-              { 
-                new: true,
-                runValidators: true 
-              }
+                roomId,
+                { $pull: { participants: socket.user.id } },
+                {
+                  new: true,
+                  runValidators: true
+                }
             ).populate('participants', 'name email profileImage');
 
             if (updatedRoom) {
@@ -779,19 +764,19 @@ module.exports = function(io) {
 
         // 읽음 상태 업데이트
         await Message.updateMany(
-          {
-            _id: { $in: messageIds },
-            room: roomId,
-            'readers.userId': { $ne: socket.user.id }
-          },
-          {
-            $push: {
-              readers: {
-                userId: socket.user.id,
-                readAt: new Date()
+            {
+              _id: { $in: messageIds },
+              room: roomId,
+              'readers.userId': { $ne: socket.user.id }
+            },
+            {
+              $push: {
+                readers: {
+                  userId: socket.user.id,
+                  readAt: new Date()
+                }
               }
             }
-          }
         );
 
         socket.to(roomId).emit('messagesRead', {
@@ -844,18 +829,18 @@ module.exports = function(io) {
   // AI 멘션 추출 함수
   function extractAIMentions(content) {
     if (!content) return [];
-    
+
     const aiTypes = ['wayneAI', 'consultingAI'];
     const mentions = new Set();
     const mentionRegex = /@(wayneAI|consultingAI)\b/g;
     let match;
-    
+
     while ((match = mentionRegex.exec(content)) !== null) {
       if (aiTypes.includes(match[1])) {
         mentions.add(match[1]);
       }
     }
-    
+
     return Array.from(mentions);
   }
 
@@ -875,7 +860,7 @@ module.exports = function(io) {
       lastUpdate: Date.now(),
       reactions: {}
     });
-    
+
     logDebug('AI response started', {
       messageId,
       aiType: aiName,
@@ -901,7 +886,7 @@ module.exports = function(io) {
         },
         onChunk: async (chunk) => {
           accumulatedContent += chunk.currentChunk || '';
-          
+
           const session = streamingSessions.get(messageId);
           if (session) {
             session.content = accumulatedContent;
@@ -960,7 +945,7 @@ module.exports = function(io) {
         onError: (error) => {
           streamingSessions.delete(messageId);
           console.error('AI response error:', error);
-          
+
           io.to(room).emit('aiMessageError', {
             messageId,
             error: error.message || 'AI 응답 생성 중 오류가 발생했습니다.',
@@ -977,7 +962,7 @@ module.exports = function(io) {
     } catch (error) {
       streamingSessions.delete(messageId);
       console.error('AI services error:', error);
-      
+
       io.to(room).emit('aiMessageError', {
         messageId,
         error: error.message || 'AI 서비스 오류가 발생했습니다.',

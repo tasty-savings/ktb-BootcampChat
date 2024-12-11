@@ -1,46 +1,50 @@
-// redisPubSub.js
+// utils/redisPubSub.js
+
 const { createClient } = require('redis');
-
-const publisher = createClient({ url: process.env.REDIS_URL });
-const subscriber = createClient({ url: process.env.REDIS_URL });
-
-publisher.on('error', (err) => console.error('Redis Publisher Error', err));
-subscriber.on('error', (err) => console.error('Redis Subscriber Error', err));
-
-const connectRedis = async () => {
-    await publisher.connect();
-    await subscriber.connect();
-};
-
-const publish = async (channel, message) => {
-    await publisher.publish(channel, message);
-};
-
-const subscribe = (channel, callback) => {
-    subscriber.subscribe(channel, (message) => {
-        callback(message);
-    });
-};
+const logger = require('./logger');
 
 let ioInstance;
 
-
+// Socket.IO 인스턴스를 설정하는 함수
 const setIO = (io) => {
     ioInstance = io;
-
-    // 예시: 'room:created' 채널 구독
-    subscribe('room:created', (message) => {
-        const roomData = JSON.parse(message);
-        ioInstance.to('room-list').emit('roomCreated', roomData);
-    });
-
-    // 예시: 'room:join' 채널 구독
-    subscribe('room:join', (message) => {
-        const roomData = JSON.parse(message);
-        ioInstance.to(roomData.roomId).emit('roomUpdate', roomData);
-    });
-
-    // 필요에 따라 추가 구독 설정
+    logger.info('IO 인스턴스 설정 완료.');
 };
 
-module.exports = { connectRedis, publish, subscribe, setIO };
+// 추가적인 Redis 구독을 설정하는 함수
+const connectRedis = async () => {
+    try {
+        // 별도의 Redis 클라이언트를 생성하여 구독 용도로 사용
+        const customSubscriber = createClient({ url: process.env.REDIS_URI });
+
+        customSubscriber.on('error', (err) => logger.error('Custom Subscriber Error', err));
+
+        await customSubscriber.connect();
+        logger.info('Custom Redis Subscriber Connected');
+
+        // Redis 채널 구독 설정
+        await customSubscriber.subscribe('room:created', (message) => {
+            const roomData = JSON.parse(message);
+            if (ioInstance) {
+                ioInstance.to('room-list').emit('roomCreated', roomData);
+                logger.info('roomCreated 이벤트 전송:', roomData);
+            }
+        });
+
+        await customSubscriber.subscribe('room:join', (message) => {
+            const roomData = JSON.parse(message);
+            if (ioInstance) {
+                ioInstance.to(roomData.roomId).emit('roomUpdate', roomData);
+                logger.info('roomUpdate 이벤트 전송:', roomData);
+            }
+        });
+
+        logger.info('Custom Redis Subscribers 설정 완료.');
+
+    } catch (error) {
+        logger.error('Error in connectRedis:', error);
+        throw error;
+    }
+};
+
+module.exports = { connectRedis, setIO };
