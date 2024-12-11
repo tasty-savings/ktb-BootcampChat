@@ -306,27 +306,34 @@ class FileService {
   getFileUrl(filename, forPreview = false) {
     if (!filename) return '';
 
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
-    const endpoint = forPreview ? 'view' : 'download';
-    return `${baseUrl}/api/files/${endpoint}/${filename}`;
+    // const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
+    // const endpoint = forPreview ? 'view' : 'download';
+    // return `${baseUrl}/api/files/${endpoint}/${filename}`;
+    return forPreview? `https://d2o2qudtc4f31o.cloudfront.net/${filename}`
+        : `https://d2o2qudtc4f31o.cloudfront.net/download/${filename}`;
   }
 
+  // getPreviewUrl(file, withAuth = true) {
+  //   if (!file?.filename) return '';
+  //
+  //   const baseUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/files/view/${file.filename}`;
+  //
+  //   if (!withAuth) return baseUrl;
+  //
+  //   const user = authService.getCurrentUser();
+  //   if (!user?.token || !user?.sessionId) return baseUrl;
+  //
+  //   // URL 객체 생성 전 프로토콜 확인
+  //   const url = new URL(baseUrl);
+  //   url.searchParams.append('token', encodeURIComponent(user.token));
+  //   url.searchParams.append('sessionId', encodeURIComponent(user.sessionId));
+  //
+  //   return url.toString();
+  // }
+
   getPreviewUrl(file, withAuth = true) {
-    if (!file?.filename) return '';
-
-    const baseUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/files/view/${file.filename}`;
-    
-    if (!withAuth) return baseUrl;
-
-    const user = authService.getCurrentUser();
-    if (!user?.token || !user?.sessionId) return baseUrl;
-
-    // URL 객체 생성 전 프로토콜 확인
-    const url = new URL(baseUrl);
-    url.searchParams.append('token', encodeURIComponent(user.token));
-    url.searchParams.append('sessionId', encodeURIComponent(user.sessionId));
-
-    return url.toString();
+      if (!file?.filename) return '';
+    return "https://d2o2qudtc4f31o.cloudfront.net/" + file.filename;
   }
 
   getFileType(filename) {

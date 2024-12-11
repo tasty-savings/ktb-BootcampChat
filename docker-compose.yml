@@ -17,6 +17,15 @@ services:
     #       cpus: "0.2"  # 최소 20% CPU 보장
     #       memory: "1G"
 
+  websocket:
+    build:
+      context: ./websocket
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    env_file:
+      - ./websocket/.env
+
   frontend:
     build:
       context: ./frontend
@@ -33,7 +42,6 @@ services:
     #     reservations:
     #       cpus: "0.2"  # 최소 20% CPU 보장
     #       memory: "1G"
-
 
   mongodb:
     image: mongo

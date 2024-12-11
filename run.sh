@@ -1,11 +1,13 @@
 #!/bin/bash
 
 # 실행할 서비스 목록
-services=("MongoDB" "Redis" "Backend" "Frontend")
+#services=("MongoDB" "Redis" "Backend" "Frontend")
+services=("MongoDB" "Redis" "Backend" "Frontend", "Socket")
 
 # 백엔드 및 프론트엔드 경로 설정
 BACKEND_DIR="./backend"
 FRONTEND_DIR="./frontend"
+SOCKET_DIR="./websocket"
 
 # 로그 파일 경로
 LOG_DIR="./logs"
@@ -18,6 +20,9 @@ PM2_MONGODB_NAME="mongo-server"
 PM2_REDIS_NAME="redis-server"
 PM2_BACKEND_NAME="backend-server"
 PM2_FRONTEND_NAME="frontend-server"
+
+# 소켓 추가
+PM2_SOCKET_NAME="socket-server"
 
 # 명령어 인자 확인
 if [ $# -eq 0 ] || [ $# -gt 2 ]; then
@@ -71,28 +76,56 @@ start_services() {
   mkdir -p $LOG_DIR
 
   # MongoDB 시작
-  if ! pm2 list | grep -q "$PM2_MONGODB_NAME"; then
-    echo "MongoDB를 시작합니다..."
-    pm2 start mongod --name "$PM2_MONGODB_NAME" -- \
-      --dbpath "$DATA_DIR" \
-      --bind_ip 0.0.0.0 \
-      --logpath "$LOG_DIR/mongodb.log" \
+  # 컨테이너 실행 여부 확인
+  if ! docker ps --format '{{.Names}}' | grep -q "$DOCKER_MONGODB_CONTAINER_NAME"; then
+    echo "MongoDB를 Docker 컨테이너로 시작합니다..."
+    docker run -d --name "$DOCKER_MONGODB_CONTAINER_NAME" \
+      -v "$DATA_DIR:/data/db" \
+      -v "$LOG_DIR:/var/log/mongodb" \
+      -p 27017:27017 \
+      mongo:latest \
+      --logpath /var/log/mongodb/mongodb.log \
       --logappend
   else
-    echo "MongoDB가 이미 실행 중입니다."
+    echo "MongoDB 컨테이너가 이미 실행 중입니다."
   fi
+#
+#  로컬 버전
+#  if ! pm2 list | grep -q "$PM2_MONGODB_NAME"; then
+#    echo "MongoDB를 시작합니다..."
+#    pm2 start mongod --name "$PM2_MONGODB_NAME" -- \
+#      --dbpath "$DATA_DIR" \
+#      --bind_ip 0.0.0.0 \
+#      --logpath "$LOG_DIR/mongodb.log" \
+#      --logappend
+#  else
+#    echo "MongoDB가 이미 실행 중입니다."
+#  fi
 
   # Redis 시작
-  if ! pm2 list | grep -q "$PM2_REDIS_NAME"; then
-    echo "Redis를 시작합니다..."
-    pm2 start redis-server --name "$PM2_REDIS_NAME" -- \
-      --bind 0.0.0.0 \
-      --loglevel notice \
-      --dir "$LOG_DIR" \
-      --daemonize no
+  # Docker 컨테이너 실행 여부 확인
+  if ! docker ps --format '{{.Names}}' | grep -q "$DOCKER_REDIS_CONTAINER_NAME"; then
+      echo "Redis를 Docker 컨테이너로 시작합니다..."
+      docker run -d --name "$DOCKER_REDIS_CONTAINER_NAME" \
+        -p 6379:6379 \
+        -v "$LOG_DIR:/var/log/redis" \
+        redis:latest \
+        redis-server --bind 0.0.0.0 --loglevel notice --logfile /var/log/redis/redis.log
   else
-    echo "Redis가 이미 실행 중입니다."
+      echo "Redis 컨테이너가 이미 실행 중입니다."
   fi
+
+#   로컬 redis
+#  if ! pm2 list | grep -q "$PM2_REDIS_NAME"; then
+#    echo "Redis를 시작합니다..."
+#    pm2 start redis-server --name "$PM2_REDIS_NAME" -- \
+#      --bind 0.0.0.0 \
+#      --loglevel notice \
+#      --dir "$LOG_DIR" \
+#      --daemonize no
+#  else
+#    echo "Redis가 이미 실행 중입니다."
+#  fi
 
   # 백엔드 시작
   if ! pm2 list | grep -q "$PM2_BACKEND_NAME"; then
@@ -106,11 +139,23 @@ start_services() {
     echo "백엔드 서버가 이미 실행 중입니다."
   fi
 
+    # 소켓 서버 시작 추가
+      if ! pm2 list | grep -q "$PM2_SOCKET_NAME"; then
+        echo "소켓 서버를 시작합니다... (모드: $MODE)"
+        cd "$SOCKET_DIR"
+        NODE_ENV=$MODE pm2 start server.js --name "$PM2_SOCKET_NAME" \
+          --log "$LOG_DIR/socket.log" \
+          --error "$LOG_DIR/socket-error.log"
+        cd ..
+      else
+        echo "소켓 서버가 이미 실행 중입니다."
+      fi
+
   # 프론트엔드 시작
   if ! pm2 list | grep -q "$PM2_FRONTEND_NAME"; then
     echo "프론트엔드 서버를 시작합니다... (모드: $MODE)"
     cd "$FRONTEND_DIR"
-    
+
     if [ "$MODE" = "prod" ]; then
       echo "프론트엔드 프로덕션 빌드를 시작합니다..."
       npm run build
@@ -124,7 +169,8 @@ start_services() {
         --error "$LOG_DIR/frontend-error.log" \
         -- run dev -- -p 3000
     fi
-    
+
+
     cd ..
   else
     echo "프론트엔드 서버가 이미 실행 중입니다."
@@ -137,7 +183,9 @@ start_services() {
 stop_services() {
   echo "서비스를 중지합니다..."
 
-  for service in "$PM2_FRONTEND_NAME" "$PM2_BACKEND_NAME" "$PM2_REDIS_NAME" "$PM2_MONGODB_NAME"; do
+  # "$PM2_SOCKET_NAME" 추가
+#  for services in "$PM2_FRONTEND_NAME" "$PM2_BACKEND_NAME" "$PM2_REDIS_NAME" "$PM2_MONGODB_NAME" ; do
+  for service in "$PM2_FRONTEND_NAME" "$PM2_BACKEND_NAME" "$PM2_REDIS_NAME" "$PM2_MONGODB_NAME" "$PM2_SOCKET_NAME"; do
     if pm2 list | grep -q "$service"; then
       echo "$service 중지 중..."
       pm2 stop "$service"
@@ -157,6 +205,8 @@ restart_services() {
   
   cd "$BACKEND_DIR"
   NODE_ENV=$MODE pm2 restart "$PM2_BACKEND_NAME"
+#   NODE_ENV=$MODE pm2 restart "$PM2_SOCKET_NAME" 추가
+  NODE_ENV=$MODE pm2 restart "$PM2_SOCKET_NAME"
   cd ..
   
   cd "$FRONTEND_DIR"
@@ -182,6 +232,8 @@ status_services() {
   echo "Redis (6379):" $(lsof -i:6379 | grep LISTEN || echo "미사용")
   echo "Backend (5000):" $(lsof -i:5000 | grep LISTEN || echo "미사용")
   echo "Frontend (3000):" $(lsof -i:3000 | grep LISTEN || echo "미사용")
+ # 소켓 서버 포트 확인 (예: 3001번 포트 사용 시)
+  echo "Socket (3001):" $(lsof -i:3001 | grep LISTEN || echo "미사용")
 }
 
 # 명령어 처리

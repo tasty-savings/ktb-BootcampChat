@@ -3,12 +3,29 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../../middleware/auth');
 const fileController = require('../../controllers/fileController');
-const { upload, errorHandler } = require('../../middleware/upload');
+const { upload, errorHandler, copyFileWithDisposition } = require('../../middleware/upload');
 
 // 파일 업로드
 router.post('/upload',
   auth,
   upload.single('file'),
+    async (req, res, next) => {
+        try {
+            // 1. 원본 파일을 S3에 업로드 (미리보기용 + 다운로드용)
+            const originalFile = req.file;
+            const originalFileKey = originalFile.key;  // S3에 저장된 파일의 키
+
+            // // 2. 미리보기용 파일 (inline) 복사
+            // await copyFileWithDisposition(process.env.AWS_S3_BUCKET_NAME, viewOnlyFileKey, 'inline');
+
+            // 3. 다운로드용 파일 (attachment) 복사
+            await copyFileWithDisposition(process.env.AWS_S3_BUCKET_NAME, originalFileKey, 'attachment');
+
+            next();
+        } catch (error) {
+            next(error);
+        }
+    },
   errorHandler,
   fileController.uploadFile
 );

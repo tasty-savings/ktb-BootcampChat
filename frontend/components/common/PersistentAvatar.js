@@ -18,7 +18,7 @@ const PersistentAvatar = forwardRef(({
     if (!imagePath) return null;
     return imagePath.startsWith('http') ? 
       imagePath : 
-      `${process.env.NEXT_PUBLIC_API_URL}${imagePath}`;
+      `https://d2o2qudtc4f31o.cloudfront.net/${imagePath}`;
   }, []);
 
   // 프로필 이미지 URL 처리

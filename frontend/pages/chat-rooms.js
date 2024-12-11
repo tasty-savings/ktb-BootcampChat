@@ -20,6 +20,7 @@ import authService from '../services/authService';
 import axiosInstance from '../services/axios';
 import { withAuth } from '../middleware/withAuth';
 import { Toast } from '../components/Toast';
+import RoomPasswordModal from "../components/chat/PasswordCheck";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -182,6 +183,10 @@ function ChatRoomsComponent() {
   const [pageSize] = useState(INITIAL_PAGE_SIZE);
   const [hasMore, setHasMore] = useState(true);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [selectedRoom, setSelectedRoom] = useState(null);
+  const [passwordError, setPasswordError] = useState('');
+  const [joiningRoom, setJoiningRoom] = useState(false);
 
   // Refs
   const socketRef = useRef(null);
@@ -200,6 +205,11 @@ function ChatRoomsComponent() {
 
   const handleAuthError = useCallback(async (error) => {
     try {
+      // 비밀번호 불일치 에러 무시
+      if (error.response?.data?.code === 'INVALID_ROOM_PASSWORD') {
+        return true;
+      }
+      // 토큰 만료 시 갱신 시도
       if (error.response?.status === 401 || error.response?.data?.code === 'TOKEN_EXPIRED') {
         const refreshed = await authService.refreshToken();
         if (refreshed) {
@@ -561,7 +571,7 @@ function ChatRoomsComponent() {
     };
   }, [currentUser, handleAuthError]);
 
-  const handleJoinRoom = async (roomId) => {
+  const handleJoinRoom = async (room) => {
     if (connectionStatus !== CONNECTION_STATUS.CONNECTED) {
       setError({
         title: '채팅방 입장 실패',
@@ -571,13 +581,21 @@ function ChatRoomsComponent() {
       return;
     }
 
+    // 비밀번호가 있는 방인 경우
+    if (room.hasPassword) {
+      setSelectedRoom(room);
+      setShowPasswordModal(true);
+      return;
+    }
+
+    // 비밀번호가 없는 방은 바로 입장 시도
     try {
-      const response = await axiosInstance.post(`/api/rooms/${roomId}/join`, {}, {
+      const response = await axiosInstance.post(`/api/rooms/${room._id}/join`, {}, {
         timeout: 5000
       });
       
       if (response.data.success) {
-        router.push(`/chat?room=${roomId}`);
+        router.push(`/chat?room=${room._id}`);
       }
     } catch (error) {
       console.error('Room join error:', error);
@@ -594,6 +612,33 @@ function ChatRoomsComponent() {
         message: error.response?.data?.message || errorMessage,
         type: 'danger'
       });
+    }
+  };
+
+  const handlePasswordSubmit = async (password) => {
+    setJoiningRoom(true);
+    setPasswordError('');
+
+    try {
+      const response = await axiosInstance.post(`/api/rooms/${selectedRoom._id}/join`, {
+        password
+      }, {
+        timeout: 5000
+      });
+
+      if (response.data.success) {
+        setShowPasswordModal(false);
+        router.push(`/chat?room=${selectedRoom._id}`);
+      }
+    } catch (error) {
+      console.error('Room join error:', error);
+
+      // 비밀번호 불일치 에러 처리
+      if (error.response?.data?.code === 'INVALID_ROOM_PASSWORD') {
+        setPasswordError(error.response.data.message || '비밀번호가 올바르지 않습니다.');
+      }
+    } finally {
+      setJoiningRoom(false);
     }
   };
 
@@ -646,7 +691,7 @@ function ChatRoomsComponent() {
         <Button
           variant="primary"
           size="md"
-          onClick={() => handleJoinRoom(rowData._id)}
+          onClick={() => handleJoinRoom(rowData)}
           disabled={connectionStatus !== CONNECTION_STATUS.CONNECTED}
         >
           입장
@@ -754,6 +799,18 @@ function ChatRoomsComponent() {
           )}
         </Card.Body>
       </Card>
+
+      <RoomPasswordModal
+        isOpen={showPasswordModal}
+        onClose={() => {
+          setShowPasswordModal(false);
+          setPasswordError('');
+          setSelectedRoom(null);
+        }}
+        onSubmit={handlePasswordSubmit}
+        loading={joiningRoom}
+        error={passwordError}
+      />
     </div>
   );
 }

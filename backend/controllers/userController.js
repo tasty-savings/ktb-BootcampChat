@@ -1,8 +1,57 @@
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const { upload } = require('../middleware/upload');
+const { S3Client, DeleteObjectCommand, HeadObjectCommand } = require('@aws-sdk/client-s3');
 const path = require('path');
-const fs = require('fs').promises;
+// const fs = require('fs').promises;
+// AWS SDK 불러오기
+
+const s3 = new S3Client({
+  region: process.env.AWS_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  },
+});
+
+const fs = {
+  access:async function checkIfFileExists(key) {
+    const params = {
+      Bucket: process.env.AWS_S3_BUCKET_NAME, // 버킷 이름
+      Key: key, // 파일의 S3 키 (경로 + 파일명)
+    };
+
+    try {
+      // HeadObjectCommand를 사용하여 객체 메타데이터를 가져옴
+      const data = await s3.send(new HeadObjectCommand(params));
+      console.log('파일이 존재합니다:', data);
+      return true;  // 파일이 존재함
+    } catch (error) {
+      if (error.name === 'NoSuchKey') {
+        console.log('파일이 존재하지 않습니다.');
+      } else {
+        console.error('에러:', error);
+      }
+      return false;  // 파일이 존재하지 않음
+    }
+  },
+  unlink:async function deleteFileFromS3(fileKey) {
+        const params = {
+          Bucket: process.env.AWS_S3_BUCKET_NAME,
+          Key: fileKey,
+        };
+
+        try {
+          const command = new DeleteObjectCommand(params);
+          const data = await s3.send(command);
+          console.log(`Successfully deleted file from S3: ${fileKey}`);
+          return data;
+        } catch (error) {
+          console.error('Error deleting file from S3:', error);
+          throw error;
+        }
+      }
+}
 
 // 회원가입
 exports.register = async (req, res) => {
@@ -214,7 +263,8 @@ exports.uploadProfileImage = async (req, res) => {
 
     // 기존 프로필 이미지가 있다면 삭제
     if (user.profileImage) {
-      const oldImagePath = path.join(__dirname, '..', user.profileImage);
+      // const oldImagePath = path.join(__dirname, '..', user.profileImage);
+      const oldImagePath = user.profileImage;
       try {
         await fs.access(oldImagePath);
         await fs.unlink(oldImagePath);
@@ -224,7 +274,7 @@ exports.uploadProfileImage = async (req, res) => {
     }
 
     // 새 이미지 경로 저장
-    const imageUrl = `/uploads/${req.file.filename}`;
+    const imageUrl = `${req.file.path}`;
     user.profileImage = imageUrl;
     await user.save();
 
@@ -263,7 +313,8 @@ exports.deleteProfileImage = async (req, res) => {
     }
 
     if (user.profileImage) {
-      const imagePath = path.join(__dirname, '..', user.profileImage);
+      // const imagePath = path.join(__dirname, '..', user.profileImage);
+      const imagePath = user.profileImage;
       try {
         await fs.access(imagePath);
         await fs.unlink(imagePath);
@@ -302,7 +353,8 @@ exports.deleteAccount = async (req, res) => {
 
     // 프로필 이미지가 있다면 삭제
     if (user.profileImage) {
-      const imagePath = path.join(__dirname, '..', user.profileImage);
+      // const imagePath = path.join(__dirname, '..', user.profileImage);
+      const imagePath = user.profileImage;
       try {
         await fs.access(imagePath);
         await fs.unlink(imagePath);

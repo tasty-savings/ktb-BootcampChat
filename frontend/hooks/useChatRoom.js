@@ -145,6 +145,7 @@ export const useChatRoom = () => {
         socketRef.current.off('messageReactionUpdate');
         socketRef.current.off('session_ended');
         socketRef.current.off('error');
+        socketRef.current.off('participantsUpdate');
       }
 
       // Clear timeouts
@@ -357,6 +358,24 @@ export const useChatRoom = () => {
       } finally {
         messageProcessingRef.current = false;
       }
+    });
+
+    // 채팅 참여자 추가 이벤트
+    socketRef.current.on('participantsUpdate', (updateParticipants) => {
+      if (!mountedRef.current) return;
+
+      setRoom(prevRoom => {
+        if (!prevRoom) return prevRoom;
+
+        // 이전 참가자 수보다 많을 때만 업데이트
+        if (updateParticipants.length > prevRoom.participants.length) {
+          return {
+            ...prevRoom,
+            participants: updateParticipants
+          };
+        }
+        return prevRoom;
+      });
     });
 
     setupAIMessageListeners();

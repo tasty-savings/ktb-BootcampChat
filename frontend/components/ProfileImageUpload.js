@@ -16,7 +16,7 @@ const ProfileImageUpload = ({ currentImage, onImageChange }) => {
     if (!imagePath) return null;
     return imagePath.startsWith('http') ? 
       imagePath : 
-      `${process.env.NEXT_PUBLIC_API_URL}${imagePath}`;
+      `https://d2o2qudtc4f31o.cloudfront.net/${imagePath}`;
   };
 
   // 컴포넌트 마운트 시 이미지 설정
