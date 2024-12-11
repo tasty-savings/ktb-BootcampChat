@@ -285,9 +285,10 @@ router.post('/:roomId/join', auth, async (req, res) => {
         if (room.hasPassword) {
             const isPasswordValid = await room.checkPassword(password);
             if (!isPasswordValid) {
-                return res.status(401).json({
+                return res.status(403).json({
                     success: false,
-                    message: '비밀번호가 일치하지 않습니다.'
+                    message: '비밀번호가 일치하지 않습니다.',
+                    code: 'INVALID_ROOM_PASSWORD'
                 });
             }
         }
