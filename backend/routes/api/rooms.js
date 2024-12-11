@@ -229,7 +229,7 @@ router.post('/', auth, async (req, res) => {
 // 특정 채팅방 조회
 router.get('/:roomId', auth, async (req, res) => {
     try {
-        const room = await Room.findById(req.params.roomId)
+        let room = await Room.findById(req.params.roomId)
             .populate('creator', 'name email')
             .populate('participants', 'name email');
 
@@ -238,6 +238,18 @@ router.get('/:roomId', auth, async (req, res) => {
                 success: false,
                 message: '채팅방을 찾을 수 없습니다.'
             });
+        }
+
+        // 현재 사용자가 참여자 목록에 없으면 자동으로 추가
+        const isParticipant = room.participants.some(p => p.id.toString() === req.user.id);
+        if (!isParticipant) {
+            room.participants.push(req.user.id);
+            await room.save();
+
+            // 참여자 정보를 포함하여 다시 조회
+            room = await Room.findById(req.params.roomId)
+                .populate('creator', 'name email')
+                .populate('participants', 'name email');
         }
 
         res.json({
