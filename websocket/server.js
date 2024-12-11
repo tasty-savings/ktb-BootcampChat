@@ -106,11 +106,11 @@ setIO(io);
         });
 
         // API 서버 시작
-        app.listen(PORT, '0.0.0.0', () => {
-            console.log(`API Server running on port ${PORT}`);
-            console.log('Environment:', process.env.NODE_ENV);
-            console.log('API Base URL:', `http://0.0.0.0:${PORT}/api`);
-        });
+        // app.listen(PORT, '0.0.0.0', () => {
+        //     console.log(`API Server running on port ${PORT}`);
+        //     console.log('Environment:', process.env.NODE_ENV);
+        //     console.log('API Base URL:', `http://0.0.0.0:${PORT}/api`);
+        // });
     } catch (err) {
         console.error('Server startup error:', err);
         process.exit(1);

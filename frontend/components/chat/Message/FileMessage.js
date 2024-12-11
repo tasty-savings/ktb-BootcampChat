@@ -115,10 +115,12 @@ const FileMessage = ({
       }
 
       const baseUrl = fileService.getFileUrl(msg.file.filename, false);
-      const authenticatedUrl = `${baseUrl}?token=${encodeURIComponent(user.token)}&sessionId=${encodeURIComponent(user.sessionId)}&download=true`;
-
+      console.log(baseUrl);
+      // const authenticatedUrl = `${baseUrl}?token=${encodeURIComponent(user.token)}&sessionId=${encodeURIComponent(user.sessionId)}&download=true`;
+      //
       const link = document.createElement('a');
-      link.href = authenticatedUrl;
+      link.href = baseUrl;
+      console.log(baseUrl);
       link.download = getDecodedFilename(msg.file.originalname);
       document.body.appendChild(link);
       link.click();

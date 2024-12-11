@@ -33,9 +33,10 @@ const Profile = () => {
   // 프로필 이미지 URL 생성
   const getProfileImageUrl = useCallback((imagePath) => {
     if (!imagePath) return null;
+    console.log(imagePath);
     return imagePath.startsWith('http') ? 
       imagePath : 
-      `${process.env.NEXT_PUBLIC_API_URL}${imagePath}`;
+      `https://d2o2qudtc4f31o.cloudfront.net/${imagePath}`;
   }, []);
 
   useEffect(() => {
@@ -52,9 +53,10 @@ const Profile = () => {
       avatarStyleRef.current = { backgroundColor, color };
     }
 
+    console.log(user.profileImage);
     setCurrentUser(user);
     setFormData(prev => ({ ...prev, name: user.name }));
-    setProfileImage(user.profileImage || '');
+    setProfileImage(getProfileImageUrl(user.profileImage || ''));
   }, [router, getProfileImageUrl]);
 
   // 전역 이벤트 리스너 설정
