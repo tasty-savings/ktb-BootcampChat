@@ -7,6 +7,16 @@ const fs = require('fs');
 const { promisify } = require('util');
 const crypto = require('crypto');
 const { uploadDir } = require('../middleware/upload');
+const { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand } = require("@aws-sdk/client-s3");
+
+// S3 클라이언트 설정
+const s3 = new S3Client({
+  region: process.env.AWS_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  },
+});
 
 const fsPromises = {
   writeFile: promisify(fs.writeFile),
@@ -16,18 +26,101 @@ const fsPromises = {
   rename: promisify(fs.rename)
 };
 
+// const s3Promises = {
+//   getFile : async (key) => {
+//     try {
+//       const command = new GetObjectCommand({
+//         Bucket: process.env.AWS_S3_BUCKET_NAME,
+//         Key: key,
+//       });
+//       const response = await s3.send(command);
+//
+//       // 스트림 데이터를 버퍼로 변환
+//       const chunks = [];
+//       for await (const chunk of response.Body) {
+//         chunks.push(chunk);
+//       }
+//       return Buffer.concat(chunks);
+//     } catch (error) {
+//       console.error("S3 getFile error:", error);
+//       throw error;
+//     }
+//   },
+//
+//   writeFile: async (key, body, contentType = "application/octet-stream") => {
+//     try {
+//       const command = new PutObjectCommand({
+//         Bucket: process.env.AWS_S3_BUCKET_NAME,
+//         Key: key,
+//         Body: body,
+//         ContentType: contentType,
+//       });
+//       await s3.send(command);
+//       console.log(`File uploaded to S3: ${key}`);
+//     } catch (error) {
+//       console.error("S3 writeFile error:", error);
+//       throw error;
+//     }
+//   },
+//
+//   unlink: async (key) => {
+//     try {
+//       const command = new DeleteObjectCommand({
+//         Bucket: process.env.AWS_S3_BUCKET_NAME,
+//         Key: key,
+//       });
+//       await s3.send(command);
+//       console.log(`File deleted from S3: ${key}`);
+//     } catch (error) {
+//       console.error("S3 unlink error:", error);
+//       throw error;
+//     }
+//   },
+//
+//   access: async (key) => {
+//     try {
+//       const command = new HeadObjectCommand({
+//         Bucket: process.env.AWS_S3_BUCKET_NAME,
+//         Key: key,
+//       });
+//       await s3.send(command);
+//       console.log(`File exists in S3: ${key}`);
+//     } catch (error) {
+//       if (error.name === "NotFound") {
+//         console.error(`File not found in S3: ${key}`);
+//       } else {
+//         console.error("S3 access error:", error);
+//       }
+//       throw error;
+//     }
+//   },
+//
+//   rename: async (oldKey, newKey) => {
+//     try {
+//       // S3에는 rename 기능이 없으므로 복사 후 삭제 작업을 수행
+//       await s3Promises.writeFile(newKey, await s3Promises.getFile(oldKey));
+//       await s3Promises.unlink(oldKey);
+//       console.log(`File renamed in S3 from ${oldKey} to ${newKey}`);
+//     } catch (error) {
+//       console.error("S3 rename error:", error);
+//       throw error;
+//     }
+//   },
+// };
+
+
 const isPathSafe = (filepath, directory) => {
   const resolvedPath = path.resolve(filepath);
   const resolvedDirectory = path.resolve(directory);
   return resolvedPath.startsWith(resolvedDirectory);
 };
 
-const generateSafeFilename = (originalFilename) => {
-  const ext = path.extname(originalFilename || '').toLowerCase();
-  const timestamp = Date.now();
-  const randomBytes = crypto.randomBytes(8).toString('hex');
-  return `${timestamp}_${randomBytes}${ext}`;
-};
+// const generateSafeFilename = (originalFilename) => {
+//   const ext = path.extname(originalFilename || '').toLowerCase();
+//   const timestamp = Date.now();
+//   const randomBytes = crypto.randomBytes(8).toString('hex');
+//   return `${timestamp}_${randomBytes}${ext}`;
+// };
 
 // 개선된 파일 정보 조회 함수
 const getFileFromRequest = async (req) => {
@@ -91,9 +184,11 @@ exports.uploadFile = async (req, res) => {
       });
     }
 
-    const safeFilename = generateSafeFilename(req.file.originalname);
+    // const safeFilename = generateSafeFilename(req.file.originalname);
+    const safeFilename = req.originalFileName;
     const currentPath = req.file.path;
-    const newPath = path.join(uploadDir, safeFilename);
+    // const newPath = path.join(uploadDir, safeFilename);
+
 
     const file = new File({
       filename: safeFilename,
@@ -101,11 +196,11 @@ exports.uploadFile = async (req, res) => {
       mimetype: req.file.mimetype,
       size: req.file.size,
       user: req.user.id,
-      path: newPath
+      path: safeFilename
     });
 
     await file.save();
-    await fsPromises.rename(currentPath, newPath);
+    // await fsPromises.rename(currentPath, newPath);
 
     res.status(200).json({
       success: true,
@@ -136,6 +231,7 @@ exports.uploadFile = async (req, res) => {
     });
   }
 };
+;
 
 exports.downloadFile = async (req, res) => {
   try {
