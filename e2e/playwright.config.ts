@@ -16,7 +16,8 @@ const config: PlaywrightTestConfig = {
     screenshot: 'only-on-failure',
     actionTimeout: 60000,  // 액션 타임아웃 설정
     navigationTimeout: 60000, // 네비게이션 타임아웃 설정
-    video: 'retain-on-failure' // 실패 시 비디오 저장
+    video: 'retain-on-failure', // 실패 시 비디오 저장
+    headless: false // headful 모드로 설정
   },
   projects: [
     {

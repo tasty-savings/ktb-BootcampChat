@@ -28,14 +28,14 @@ export class TestHelpers {
   private messageService: MessageService;
   private existingRooms: Set<string> = new Set();
 
-  constructor() {
-    const apiKey = process.env.OPENAI_API_KEY || '';
-    this.aiService = new AIService({
-      apiKey,
-      model: process.env.OPENAI_MODEL || 'gpt-4-turbo-preview',
-    });
-    this.messageService = new MessageService(apiKey);
-  }
+  // constructor() {
+  //   const apiKey = process.env.OPENAI_API_KEY || '';
+  //   this.aiService = new AIService({
+  //     apiKey,
+  //     model: process.env.OPENAI_MODEL || 'gpt-4-turbo-preview',
+  //   });
+  //   this.messageService = new MessageService(apiKey);
+  // }
 
   generateRoomName(prefix = 'Test') {
     const randomId = Math.random().toString(36).substring(2, 6);
