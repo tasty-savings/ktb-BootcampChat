@@ -64,7 +64,7 @@ test.describe('인증 테스트', () => {
   //   ]);
 
   //   // 에러 메시지 확인
-  //   await expect(page.locator('.alert.alert-danger')).toBeVisible({
+  //   await expect(page.locator('.alert.Toastify__toast')).toBeVisible({
   //     timeout: 30000
   //   });
 
@@ -89,7 +89,7 @@ test.describe('인증 테스트', () => {
   //     page.click('button[type="submit"]')
   //   ]);
 
-  //   await expect(page.locator('.alert.alert-danger')).toBeVisible({
+  //   await expect(page.locator('.alert.Toastify__toast')).toBeVisible({
   //     timeout: 30000
   //   });
   // });

@@ -71,38 +71,41 @@ export class TestHelpers {
     try {
       await page.goto('/register');
       await page.waitForLoadState('networkidle');
-
+  
       await Promise.all([
         page.waitForSelector('input[name="name"]'),
         page.waitForSelector('input[name="email"]'),
         page.waitForSelector('input[name="password"]'),
         page.waitForSelector('input[name="confirmPassword"]')
       ]);
-
+  
       await page.fill('input[name="name"]', credentials.name);
       await page.fill('input[name="email"]', credentials.email);
       await page.fill('input[name="password"]', credentials.password);
       await page.fill('input[name="confirmPassword"]', credentials.password);
-
-      await Promise.all([
-        page.click('button[type="submit"]'),
-        Promise.race([
-          page.waitForURL('/chat-rooms', { timeout: 20000 }).catch(() => null),
-          page.waitForSelector('.alert-danger', { timeout: 20000 }).catch(() => null)
-        ])
-      ]);
-
-      const errorMessage = await page.locator('.alert-danger').isVisible();
-      if (errorMessage) {
+  
+      // 회원가입 버튼 클릭
+      await page.getByRole('article').getByRole('button', { name: '회원가입' }).click();
+  
+      // 회원가입 성공 알림창 처리
+      try {
+        // "채팅방 목록으로 이동" 버튼 대기 및 클릭
+        await page.getByRole('button', { name: '채팅방 목록으로 이동' }).click();
+  
+        // 채팅방 목록 페이지로 이동될 때까지 대기
+        await page.waitForURL('/chat-rooms', { timeout: 20000 });
+        
+      } catch (popupError) {
+        // 이미 가입된 계정인 경우 로그인 시도
         console.log('회원가입 실패, 로그인 시도 중...');
         await this.login(page, {
           email: credentials.email,
           password: credentials.password
         });
       }
-
+  
       await page.waitForURL('/chat-rooms', { timeout: 20000 });
-
+  
     } catch (error) {
       console.error('Registration/Login process failed:', error);
       throw new Error(`회원가입/로그인 실패: ${error.message}`);
@@ -567,8 +570,8 @@ export class TestHelpers {
       // 2. Socket 연결 대기
       await page.waitForFunction(
         () => {
-          const socket = (window as any).io;
-          return socket && socket.connected;
+          // DOM 요소나 특정 상태를 통해 연결 확인
+          return document.querySelector('.chat-container') !== null;
         },
         { timeout: LOAD_TIMEOUT }
       ).catch(() => {
@@ -691,7 +694,8 @@ export class TestHelpers {
   
   async sendMessage(page: Page, message: string, parameters?: Record<string, string>) {
     try {
-      const finalMessage = await this.messageService.generateMessage(message, parameters);
+      // const finalMessage = await this.messageService.generateMessage(message, parameters);
+      const finalMessage = message;
       const inputSelector = '.chat-input-textarea';
       
       // 입력 필드가 나타날 때까지 대기
