@@ -22,11 +22,9 @@ const processMessage = async (msg, channel) => {
     if (msg === null) {
         return;
     }
-    console.log(msg.toString());
     try {
         const messageContent = msg.content.toString();
         const message = JSON.parse(messageContent);
-        console.log(message.action)
 
         switch (message.action) {
             case 'chatMessage':
@@ -152,5 +150,6 @@ const startWorker = async () => {
         process.exit(1);
     }
 };
+
 
 startWorker();
