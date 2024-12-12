@@ -69,7 +69,8 @@ class RedisClient {
       }
 
       if (options.ttl) {
-        return await this.client.setEx(key, options.ttl, stringValue);
+        const ttl = Math.ceil(options.ttl);
+        return await this.client.setEx(key, ttl, stringValue);
       }
       return await this.client.set(key, stringValue);
     } catch (error) {
@@ -153,6 +154,77 @@ class RedisClient {
         console.error('Redis quit error:', error);
         throw error;
       }
+    }
+  }
+
+  async xAdd(stream, id, fields) {
+    try {
+      if (!this.isConnected) {
+        await this.connect();
+      }
+      return await this.client.xAdd(stream, id, fields);
+    } catch (error) {
+      console.error('Redis xAdd error:', error);
+      throw error;
+    }
+  }
+
+  async xReadGroup(group, consumer, streams, count = 10, block = 5000) {
+    try {
+      if (!this.isConnected) {
+        await this.connect();
+      }
+      return await this.client.xReadGroup(group, consumer, streams, {
+        COUNT: count,
+        BLOCK: block
+      });
+    } catch (error) {
+      console.error('Redis xReadGroup error:', error);
+      throw error;
+    }
+  }
+
+  async xAck(stream, group, ids) {
+    try {
+      if (!this.isConnected) {
+        await this.connect();
+      }
+      return await this.client.xAck(stream, group, ids);
+    } catch (error) {
+      console.error('Redis xAck error:', error);
+      throw error;
+    }
+  }
+
+  async xGroupCreate(stream, group, id = '$', mkStream = false) {
+    try {
+      if (!this.isConnected) {
+        await this.connect();
+      }
+      return await this.client.xGroupCreate(stream, group, id, { MKSTREAM: mkStream });
+    } catch (error) {
+      // 그룹이 이미 존재하면 에러를 무시
+      if (error.code === 'BUSYGROUP') {
+        console.log(`Redis Stream group ${group} already exists for ${stream}`);
+      } else {
+        console.error('Redis xGroupCreate error:', error);
+        throw error;
+      }
+    }
+  }
+
+  async xReadGroupBlocking(group, consumer, streams, count = 10, block = 5000) {
+    try {
+      if (!this.isConnected) {
+        await this.connect();
+      }
+      return await this.client.xReadGroup(group, consumer, streams, {
+        COUNT: count,
+        BLOCK: block
+      });
+    } catch (error) {
+      console.error('Redis xReadGroupBlocking error:', error);
+      throw error;
     }
   }
 }
