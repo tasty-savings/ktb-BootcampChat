@@ -98,6 +98,12 @@ export class TestHelpers {
       } catch (popupError) {
         // 이미 가입된 계정인 경우 로그인 시도
         console.log('회원가입 실패, 로그인 시도 중...');
+        // 팝업창 닫기
+        await page.getByLabel('Close').click();
+  
+        // 로그인 버튼 클릭
+        await page.getByRole('article').getByRole('button', { name: '로그인' }).click();
+  
         await this.login(page, {
           email: credentials.email,
           password: credentials.password
