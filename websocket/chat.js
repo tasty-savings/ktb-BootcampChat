@@ -1127,13 +1127,6 @@ const invalidateRoomCache = async (roomId) => {
 
 // 메시지 로드 함수
 const loadMessages = async (socket, roomId, before, limit = BATCH_SIZE) => {
-    // 캐시에서 메시지 로드
-    const cachedData = await getMessagesCache(roomId, before);
-    if (cachedData) {
-        logger.debug('messages loaded from cache', {roomId, before});
-        return cachedData;
-    }
-
     const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => {
             reject(new Error('Message loading timed out'));
