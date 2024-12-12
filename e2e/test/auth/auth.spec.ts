@@ -50,6 +50,30 @@ test.describe('인증 테스트', () => {
     await expect(toast).toContainText('이메일 주소가 없거나 비밀번호가 틀렸습니다.');
   });
 
+  // test('이미 등록된 이메일로 회원가입 시도', async ({ page }) => {
+  //   const credentials = helpers.generateUserCredentials(1);
+    
+  //   // 1. 첫 번째 회원가입 (성공)
+  //   await helpers.registerUser(page, credentials);
+    
+  //   // 채팅방 목록 페이지 확인
+  //   await expect(page).toHaveURL('/chat-rooms');
+  //   await expect(page.locator('.chat-rooms-card')).toBeVisible();
+    
+  //   // 로그아웃
+  //   await helpers.logout(page);
+    
+  //   // 2. 같은 이메일로 다시 회원가입 시도
+  //   await helpers.registerUser(page, credentials);
+    
+  //   // 채팅방 목록 페이지 및 필수 요소 확인
+  //   await expect(page).toHaveURL('/chat-rooms');
+  //   await expect(page.locator('.chat-rooms-card')).toBeVisible();
+  //   await expect(page.locator('h5')).toHaveText('채팅방 목록');
+  //   await expect(page.locator('.text-success')).toBeVisible();
+  //   await expect(page.locator('.text-success')).toHaveText('연결됨');s
+  // });
+
   // test('회원가입 유효성 검사', async ({ page }) => {
   //   await page.goto('/register');
   //   await page.waitForLoadState('networkidle');

@@ -4,6 +4,7 @@ import { MessageService } from '../services/message-service';
 import { TEST_PROMPTS } from '../data/ai-prompts';
 import { MESSAGE_PROMPTS } from '../data/message-prompts';
 import { TEST_USERS, AI_TEST_USERS, UserCredential } from '../data/credentials';
+import { v4 as uuidv4 } from 'uuid';
 
 interface UserCredentials {
   name: string;
@@ -54,7 +55,7 @@ export class TestHelpers {
     const timestamp = Date.now();
     return {
       name: `Test User ${index}`,
-      email: `testuser${index}_${timestamp}@example.com`,
+      email: `testuser${index}_${timestamp}_${uuidv4()}@example.com`,
       password: 'testPassword123!'
     };
   }
@@ -84,34 +85,30 @@ export class TestHelpers {
       await page.fill('input[name="password"]', credentials.password);
       await page.fill('input[name="confirmPassword"]', credentials.password);
   
-      // 회원가입 버튼 클릭
-      await page.getByRole('article').getByRole('button', { name: '회원가입' }).click();
-  
-      // 회원가입 성공 알림창 처리
-      try {
-        // "채팅방 목록으로 이동" 버튼 대기 및 클릭
-        await page.getByRole('button', { name: '채팅방 목록으로 이동' }).click();
-  
-        // 채팅방 목록 페이지로 이동될 때까지 대기
-        await page.waitForURL('/chat-rooms', { timeout: 20000 });
-        
-      } catch (popupError) {
-        // 이미 가입된 계정인 경우 로그인 시도
-        console.log('회원가입 실패, 로그인 시도 중...');
-        // 팝업창 닫기
-        await page.getByLabel('Close').click();
-  
-        // 로그인 버튼 클릭
-        await page.getByRole('article').getByRole('button', { name: '로그인' }).click();
-  
-        await this.login(page, {
-          email: credentials.email,
-          password: credentials.password
-        });
-      }
-  
+      // 제출 버튼 클릭 및 결과 대기
+      await Promise.all([
+        page.click('button[type="submit"]'),
+        Promise.race([
+          // 실패 케이스 1: 에러 알림창 표시
+          await page.waitForSelector('.Toastify__toast', { 
+            state: 'visible',
+            timeout: 10000 
+          }).then(async () => {
+            console.log('이미 등록된 이메일, 로그인 시도...');
+            await this.login(page, {
+              email: credentials.email,
+              password: credentials.password
+            });
+          }).catch(() => null),
+          
+          // 성공 케이스: 채팅방 목록으로 이동 버튼 표시
+          await page.click('button:has-text("채팅방 목록으로 이동")')
+        ])
+      ]);
+
+      // 최종적으로 채팅방 목록 페이지 로드 대기
       await page.waitForURL('/chat-rooms', { timeout: 20000 });
-  
+
     } catch (error) {
       console.error('Registration/Login process failed:', error);
       throw new Error(`회원가입/로그인 실패: ${error.message}`);
