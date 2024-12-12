@@ -15,4 +15,6 @@ module.exports = {
   redisPort: process.env.REDIS_PORT,
   openaiApiKey: process.env.OPENAI_API_KEY,
   vectorDbEndpoint: process.env.VECTOR_DB_ENDPOINT,
+  rabbitMQUrl: process.env.RABBIT_MQU_URL,
+  rabbitMQQueue: process.env.RABBIT_MQ_QUEUE,
 };

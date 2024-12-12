@@ -101,12 +101,13 @@ export const useReactionHandling = (socketRef, currentUser, messages, setMessage
   }, [socketRef, currentUser, messages, setMessages]);
 
   const handleReactionUpdate = useCallback(({ messageId, reactions }) => {
-    setMessages(prevMessages => 
-      prevMessages.map(msg => 
-        msg._id === messageId ? { ...msg, reactions } : msg
-      )
+    setMessages(prevMessages =>
+        prevMessages.map(msg =>
+            msg._id === messageId ? { ...msg, reactions } : msg
+        )
     );
   }, [setMessages]);
+
 
   return {
     handleReactionAdd,
