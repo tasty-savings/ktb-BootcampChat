@@ -16,7 +16,8 @@ test.describe('AI 대화 시나리오', () => {
 
   test('AI와의 복잡한 대화', async ({ browser }) => {  
     const page = await browser.newPage();
-    const creds = helpers.getTestUser(0);
+    // const creds = helpers.getTestUser(0);
+    const creds = helpers.generateUserCredentials(Math.floor(Math.random() * 1001));
     await helpers.registerUser(page, creds);
     const roomName = await helpers.joinOrCreateRoom(page, 'AI-Chat');
 
@@ -61,7 +62,8 @@ test.describe('AI 대화 시나리오', () => {
 
   test('AI와의 기술 토론', async ({ browser }) => {  
     const page = await browser.newPage();
-    const creds = helpers.getTestUser(1);
+    // const creds = helpers.getTestUser(1);
+    const creds = helpers.generateUserCredentials(Math.floor(Math.random() * 1001));
     await helpers.registerUser(page, creds);
     await helpers.joinOrCreateRoom(page, 'AI-Tech-Discussion');
 

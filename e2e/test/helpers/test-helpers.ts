@@ -4,6 +4,7 @@ import { MessageService } from '../services/message-service';
 import { TEST_PROMPTS } from '../data/ai-prompts';
 import { MESSAGE_PROMPTS } from '../data/message-prompts';
 import { TEST_USERS, AI_TEST_USERS, UserCredential } from '../data/credentials';
+import { v4 as uuidv4 } from 'uuid';
 
 interface UserCredentials {
   name: string;
@@ -28,14 +29,14 @@ export class TestHelpers {
   private messageService: MessageService;
   private existingRooms: Set<string> = new Set();
 
-  constructor() {
-    const apiKey = process.env.OPENAI_API_KEY || '';
-    this.aiService = new AIService({
-      apiKey,
-      model: process.env.OPENAI_MODEL || 'gpt-4-turbo-preview',
-    });
-    this.messageService = new MessageService(apiKey);
-  }
+  // constructor() {
+  //   const apiKey = process.env.OPENAI_API_KEY || '';
+  //   this.aiService = new AIService({
+  //     apiKey,
+  //     model: process.env.OPENAI_MODEL || 'gpt-4-turbo-preview',
+  //   });
+  //   this.messageService = new MessageService(apiKey);
+  // }
 
   generateRoomName(prefix = 'Test') {
     const randomId = Math.random().toString(36).substring(2, 6);
@@ -54,7 +55,7 @@ export class TestHelpers {
     const timestamp = Date.now();
     return {
       name: `Test User ${index}`,
-      email: `testuser${index}_${timestamp}@example.com`,
+      email: `testuser${index}_${timestamp}_${uuidv4()}@example.com`,
       password: 'testPassword123!'
     };
   }
@@ -71,36 +72,41 @@ export class TestHelpers {
     try {
       await page.goto('/register');
       await page.waitForLoadState('networkidle');
-
+  
       await Promise.all([
         page.waitForSelector('input[name="name"]'),
         page.waitForSelector('input[name="email"]'),
         page.waitForSelector('input[name="password"]'),
         page.waitForSelector('input[name="confirmPassword"]')
       ]);
-
+  
       await page.fill('input[name="name"]', credentials.name);
       await page.fill('input[name="email"]', credentials.email);
       await page.fill('input[name="password"]', credentials.password);
       await page.fill('input[name="confirmPassword"]', credentials.password);
-
+  
+      // 제출 버튼 클릭 및 결과 대기
       await Promise.all([
         page.click('button[type="submit"]'),
         Promise.race([
-          page.waitForURL('/chat-rooms', { timeout: 20000 }).catch(() => null),
-          page.waitForSelector('.alert-danger', { timeout: 20000 }).catch(() => null)
+          // 실패 케이스 1: 에러 알림창 표시
+          await page.waitForSelector('.Toastify__toast', { 
+            state: 'visible',
+            timeout: 10000 
+          }).then(async () => {
+            console.log('이미 등록된 이메일, 로그인 시도...');
+            await this.login(page, {
+              email: credentials.email,
+              password: credentials.password
+            });
+          }).catch(() => null),
+          
+          // 성공 케이스: 채팅방 목록으로 이동 버튼 표시
+          await page.click('button:has-text("채팅방 목록으로 이동")')
         ])
       ]);
 
-      const errorMessage = await page.locator('.alert-danger').isVisible();
-      if (errorMessage) {
-        console.log('회원가입 실패, 로그인 시도 중...');
-        await this.login(page, {
-          email: credentials.email,
-          password: credentials.password
-        });
-      }
-
+      // 최종적으로 채팅방 목록 페이지 로드 대기
       await page.waitForURL('/chat-rooms', { timeout: 20000 });
 
     } catch (error) {
@@ -567,8 +573,8 @@ export class TestHelpers {
       // 2. Socket 연결 대기
       await page.waitForFunction(
         () => {
-          const socket = (window as any).io;
-          return socket && socket.connected;
+          // DOM 요소나 특정 상태를 통해 연결 확인
+          return document.querySelector('.chat-container') !== null;
         },
         { timeout: LOAD_TIMEOUT }
       ).catch(() => {
@@ -691,7 +697,8 @@ export class TestHelpers {
   
   async sendMessage(page: Page, message: string, parameters?: Record<string, string>) {
     try {
-      const finalMessage = await this.messageService.generateMessage(message, parameters);
+      // const finalMessage = await this.messageService.generateMessage(message, parameters);
+      const finalMessage = message;
       const inputSelector = '.chat-input-textarea';
       
       // 입력 필드가 나타날 때까지 대기

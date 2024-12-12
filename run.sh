@@ -145,7 +145,8 @@ start_services() {
         cd "$SOCKET_DIR"
         NODE_ENV=$MODE pm2 start server.js --name "$PM2_SOCKET_NAME" \
           --log "$LOG_DIR/socket.log" \
-          --error "$LOG_DIR/socket-error.log"
+          --error "$LOG_DIR/socket-error.log"\
+          -i 3
         cd ..
       else
         echo "소켓 서버가 이미 실행 중입니다."
