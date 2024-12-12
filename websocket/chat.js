@@ -2057,52 +2057,41 @@ module.exports = function (io) {
             }
         });
 
-        // 리액션 처리
-        socket.on('messageReaction', async ({messageId, reaction, type}) => {
-            try {
-                if (!socket.user) {
-                    throw new Error('Unauthorized');
-                }
-                const message = await Message.findById(messageId);
-                if (!message) {
-                    throw new Error('메시지를 찾을 수 없습니다.');
-                }
-
-                if (type === 'add') {
-                    message.reactions.set(reaction);
-                } else if (type === 'remove') {
-                    message.reactions.delete(reaction);
-                }
-
-                // 메시지 큐에 작업 퍼블리시
-                // message.reactions.set(reaction);
-                const reactionPayload = {
-                    action: 'messageReaction',
-                    data: {
-                        messageId,
-                        reaction,
-                        type,
-                        userId: socket.user.id,
-                        timestamp: new Date()
+            // 리액션 처리
+            socket.on('messageReaction', async ({messageId, reaction, type}) => {
+                try {
+                    if (!socket.user) {
+                        throw new Error('Unauthorized');
+                    }
+                    const message = await Message.findById(messageId);
+                    if (!message) {
+                        throw new Error('메시지를 찾을 수 없습니다.');
+                    }
+                    if (type === 'add') {
+                        await message.addReaction(reaction, socket.user.id);
+                    } else if (type === 'remove') {
+                        await message.removeReaction(reaction, socket.user.id);
                     }
                 };
 
                 await publishToQueue(reactionPayload);
 
 
-                // 업데이트된 리액션 정보 브로드캐스트
-                io.to(message.room).emit('messageReactionUpdate', {
-                    messageId,
-                    reactions: message.reactions             //메시지로 결과적 일관성 보장
-                });
+                    // 업데이트된 리액션 정보 브로드캐스트
+                    io.to(message.room).emit('messageReactionUpdate', {
+                        messageId,
+                        reactions: message.reactions             //메시지로 결과적 일관성 보장
+                    });
 
-            } catch (error) {
-                logger.error('Message reaction error:', error);
-                socket.emit('error', {
-                    message: error.message || '리액션 처리 중 오류가 발생했습니다.'
-                });
-            }
-        });
-    });
+                } catch (error) {
+                    logger.error('Message reaction error:', error);
+                    socket.emit('error', {
+                        message: error.message || '리액션 처리 중 오류가 발생했습니다.'
+                    });
+                }
+            });
+        }
+    )
+    ;
 
 };
