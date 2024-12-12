@@ -2063,23 +2063,37 @@ module.exports = function (io) {
                 if (!socket.user) {
                     throw new Error('Unauthorized');
                 }
-
                 const message = await Message.findById(messageId);
                 if (!message) {
                     throw new Error('메시지를 찾을 수 없습니다.');
                 }
 
-                // 리액션 추가/제거
                 if (type === 'add') {
-                    await message.addReaction(reaction, socket.user.id);
+                    message.reactions.set(reaction);
                 } else if (type === 'remove') {
-                    await message.removeReaction(reaction, socket.user.id);
+                    message.reactions.delete(reaction);
                 }
+
+                // 메시지 큐에 작업 퍼블리시
+                // message.reactions.set(reaction);
+                const reactionPayload = {
+                    action: 'messageReaction',
+                    data: {
+                        messageId,
+                        reaction,
+                        type,
+                        userId: socket.user.id,
+                        timestamp: new Date()
+                    }
+                };
+
+                await publishToQueue(reactionPayload);
+
 
                 // 업데이트된 리액션 정보 브로드캐스트
                 io.to(message.room).emit('messageReactionUpdate', {
                     messageId,
-                    reactions: message.reactions
+                    reactions: message.reactions             //메시지로 결과적 일관성 보장
                 });
 
             } catch (error) {

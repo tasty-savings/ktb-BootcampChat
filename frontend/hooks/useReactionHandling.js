@@ -101,12 +101,26 @@ export const useReactionHandling = (socketRef, currentUser, messages, setMessage
   }, [socketRef, currentUser, messages, setMessages]);
 
   const handleReactionUpdate = useCallback(({ messageId, reactions }) => {
-    setMessages(prevMessages => 
-      prevMessages.map(msg => 
-        msg._id === messageId ? { ...msg, reactions } : msg
-      )
+    setMessages(prevMessages =>
+        prevMessages.map(msg => {
+          if (msg._id !== messageId) {
+            return msg;
+          }
+
+          const updatedReactions = { ...msg.reactions, ...reactions };
+
+          // 리액션 수가 0인 경우 해당 리액션 제거
+          Object.keys(updatedReactions).forEach(key => {
+            if (updatedReactions[key].length === 0) {
+              delete updatedReactions[key];
+            }
+          });
+
+          return { ...msg, reactions: updatedReactions };
+        })
     );
   }, [setMessages]);
+
 
   return {
     handleReactionAdd,
