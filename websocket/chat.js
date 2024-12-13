@@ -94,7 +94,7 @@ const setStreamingSession = async (messageId, sessionData) => {
 
 const getStreamingSession = async (messageId) => {
     const data = await redisClient.get(`${STREAMING_SESSIONS_PREFIX}${messageId}`);
-    return data ? JSON.parse(data) : null;
+    return data ? data : null;
 };
 
 const removeStreamingSession = async (messageId) => {
@@ -317,6 +317,7 @@ function extractAIMentions(content) {
 
 // AI 응답 처리 함수
 async function handleAIResponse(io, room, aiName, query, socket) {
+    console.log('handleAIResponse', io, room, aiName, query, socket);
     const messageId = `${aiName}-${Date.now()}`;
     let accumulatedContent = '';
     const timestamp = new Date();
@@ -732,6 +733,12 @@ module.exports = function (io) {
 
                     // AI 멘션 확인
                     const aiMentions = extractAIMentions(content);
+                    if (aiMentions.length > 0) {
+                        for (const ai of aiMentions) {
+                            const query = content.replace(new RegExp(`@${ai}\\b`, 'g'), '').trim();
+                            await handleAIResponse(io, room, ai, query);
+                        }
+                    }
 
                     logger.debug('message received', {
                         type,
@@ -764,7 +771,6 @@ module.exports = function (io) {
                         action: 'chatMessage',
                         data: { ...message.toObject(), _id: preGeneratedId }
                     };
-                    // };
 
                     await publishToQueue(messagePayload);
 
