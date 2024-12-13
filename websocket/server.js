@@ -1,4 +1,3 @@
-// server.js
 require('dotenv').config();
 const http = require('http');
 const express = require('express');
@@ -8,7 +7,9 @@ const { createAdapter } = require('@socket.io/redis-adapter');
 const { createClient } = require('redis');
 const chatHandler = require('./chat'); // Socket 이벤트 핸들러 파일 경로
 const logger = require('./utils/logger'); // Winston 로깅 설정 파일 경로 (옵션)
-const { connectRedis, setIO } = require('./utils/redisPubSub'); // Redis Pub/Sub 모듈
+const { connectRedis, setIO } = require('./utils/redisPubSub');
+const {connectRabbitMQ} = require("./utils/rabbitPublisher"); // Redis Pub/Sub 모듈
+
 
 const app = express();
 
@@ -64,6 +65,8 @@ subClient.on('error', (err) => logger.error('Redis Sub Client Error', err));
         io.adapter(createAdapter(pubClient, subClient));
         logger.info('Socket.IO Redis adapter configured.');
 
+        await connectRabbitMQ();
+
         // Socket 핸들러 초기화
         chatHandler(io);
 
@@ -88,3 +91,4 @@ subClient.on('error', (err) => logger.error('Redis Sub Client Error', err));
         process.exit(1);
     }
 })();
+

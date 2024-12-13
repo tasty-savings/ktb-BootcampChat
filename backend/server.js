@@ -6,10 +6,19 @@ const mongoose = require('mongoose');
 const path = require('path');
 const routes = require('./routes');
 const { connectRedis } = require('./utils/redisPubSub'); // 경로 조정 필요
-
+const {fork} = require('child_process');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const mongoWorker = fork('./mongoWorker.js');
+
+mongoWorker.on('message', (message) => {
+  console.log('Worker message:', message);
+});
+
+mongoWorker.on('exit', (code) => {
+  console.error(`Worker exited with code: ${code}`);
+});
 
 // trust proxy 설정
 app.set('trust proxy', 1);
