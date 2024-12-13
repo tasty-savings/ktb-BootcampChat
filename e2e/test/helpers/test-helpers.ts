@@ -85,35 +85,46 @@ export class TestHelpers {
       await page.fill('input[name="password"]', credentials.password);
       await page.fill('input[name="confirmPassword"]', credentials.password);
   
-      // 제출 버튼 클릭 및 결과 대기
-      await Promise.all([
-        page.click('button[type="submit"]'),
-        Promise.race([
-          // 실패 케이스 1: 에러 알림창 표시
-          await page.waitForSelector('.Toastify__toast', { 
+      // 제출 버튼 클릭
+      await page.click('button[type="submit"]');
+  
+      // 성공/실패 케이스 처리
+      let success = false;
+  
+      // 성공 케이스 처리
+      try {
+        await page.click('button:has-text("채팅방 목록으로 이동")');
+        success = true; // 성공 플래그 설정
+      } catch (e) {
+        console.log('성공 케이스를 처리하지 못했습니다:', e);
+      }
+  
+      // 실패 케이스 처리
+      if (!success) {
+        try {
+          await page.waitForSelector('.Toastify__toast', {
             state: 'visible',
-            timeout: 10000 
-          }).then(async () => {
-            console.log('이미 등록된 이메일, 로그인 시도...');
-            await this.login(page, {
-              email: credentials.email,
-              password: credentials.password
-            });
-          }).catch(() => null),
-          
-          // 성공 케이스: 채팅방 목록으로 이동 버튼 표시
-          await page.click('button:has-text("채팅방 목록으로 이동")')
-        ])
-      ]);
-
+            timeout: 1000,
+          });
+          console.log('이미 등록된 이메일, 로그인 시도...');
+          await this.login(page, {
+            email: credentials.email,
+            password: credentials.password,
+          });
+        } catch (e) {
+          console.log('실패 케이스에서도 에러가 발생했습니다:', e);
+        }
+      }
+  
       // 최종적으로 채팅방 목록 페이지 로드 대기
-      await page.waitForURL('/chat-rooms', { timeout: 20000 });
-
+      await page.waitForURL('/chat-rooms/', { timeout: 20000 });
+  
     } catch (error) {
       console.error('Registration/Login process failed:', error);
       throw new Error(`회원가입/로그인 실패: ${error.message}`);
     }
   }
+  
 
   async login(page: Page, credentials: LoginCredentials) {
     try {
@@ -130,7 +141,7 @@ export class TestHelpers {
 
       await Promise.all([
         page.click('button[type="submit"]'),
-        page.waitForURL('/chat-rooms', { timeout: 10000 })
+        page.waitForURL('/chat-rooms/', { timeout: 10000 })
       ]);
 
     } catch (error) {
@@ -297,7 +308,7 @@ export class TestHelpers {
 
               // 버튼 클릭 및 페이지 이동 대기
               await Promise.all([
-                page.waitForURL('**/chat?room=**', { 
+                page.waitForURL('**/chat/?room=**', { 
                   timeout: 30000,
                   waitUntil: 'networkidle'
                 }),
@@ -394,7 +405,7 @@ export class TestHelpers {
 
         // URL 변경 대기 (여러 방식으로 시도)
         Promise.race([
-          page.waitForURL('**/chat?room=*', { timeout: 30000 }),
+          page.waitForURL('**/chat/?room=*', { timeout: 30000 }),
           page.waitForURL(url => url.pathname === '/chat' && url.searchParams.has('room'), { timeout: 30000 })
         ]),
 
