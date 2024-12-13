@@ -12,6 +12,8 @@ backend/uploads
 out/
 
 test-results/
+playwright-report/
+
 
 # Logs
 logs/

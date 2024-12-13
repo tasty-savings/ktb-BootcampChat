@@ -7,7 +7,8 @@ test.describe('AI 상호작용 테스트', () => {
 
   test('다양한 AI와의 대화', async ({ page }) => {
     // 사용자 등록 및 채팅방 생성
-    const credentials = helpers.getTestUser(Math.floor(Math.random() * 1001));
+    // const credentials = helpers.getTestUser(Math.floor(Math.random() * 1001));
+    const credentials = helpers.generateUserCredentials(Math.floor(Math.random() * 1001));
     await helpers.registerUser(page, credentials);
     await helpers.joinOrCreateRoom(page, 'AI-Test');
     

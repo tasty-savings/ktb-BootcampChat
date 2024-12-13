@@ -106,7 +106,8 @@ test.describe('메시징 테스트', () => {
     
     // 첫 번째 사용자 설정
     const user1 = await browser.newPage();
-    const user1Creds = helpers.getTestUser(Math.floor(Math.random() * 1001));
+    // const user1Creds = helpers.getTestUser(Math.floor(Math.random() * 1001));
+    const user1Creds = helpers.generateUserCredentials(Math.floor(Math.random() * 1001));
     await helpers.registerUser(user1, user1Creds);
     
     // 방 생성 및 정확한 방 이름 저장
@@ -123,7 +124,8 @@ test.describe('메시징 테스트', () => {
     
     // 두 번째 사용자 설정 및 같은 방으로 입장
     const user2 = await browser.newPage();
-    const user2Creds = helpers.getTestUser(1);
+    // const user2Creds = helpers.getTestUser(1);
+    const user2Creds = helpers.generateUserCredentials(Math.floor(Math.random() * 1001));
     await helpers.registerUser(user2, user2Creds);
     await helpers.joinRoomByURLParam(user2, roomParam);
 

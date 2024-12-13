@@ -8,10 +8,12 @@ const config: PlaywrightTestConfig = {
   },
   fullyParallel: false,  // 순차 실행으로 변경
   retries: 0, // 재시도 횟수 설정
-  workers: 2,  // 동시 실행 워커 수 제한
+  workers: 1,  // 동시 실행 워커 수 제한
   reporter: [['html', { open: 'never' }]],
   use: {
     baseURL: process.env.BASE_URL || 'http://localhost:3000',
+    // baseURL: process.env.BASE_URL || 'https://goorm-ktb-020.goorm.team',
+    // baseURL: process.env.BASE_URL || 'https://ktb-chat-test.goorm.team',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     actionTimeout: 60000,  // 액션 타임아웃 설정

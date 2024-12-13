@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { TestHelpers } from '../helpers/test-helpers';
+import { promises as fs } from 'fs';
 import path from 'path';
 
 test.describe('이미지 업로드 테스트', () => {
@@ -41,7 +42,14 @@ test.describe('이미지 업로드 테스트', () => {
     }
 
     // 이미지 업로드
-    const imagePath = path.join(__dirname, '../fixtures/images/mufc_logo.png');
+    const imagePath = path.resolve(__dirname, '../fixtures/images/mufc_logo.png');
+
+    // 이미지 업로드 전 파일 존재 확인
+    try {
+      await fs.access(imagePath);
+    } catch (error) {
+      throw new Error(`Test image not found at path: ${imagePath}`);
+    }
 
     // 채팅 UI가 완전히 로드될 때까지 대기
     await uploader.waitForSelector('.chat-input-wrapper', {
